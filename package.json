@@ -1,0 +1,33 @@
+{
+  "name": "haganezuka",
+  "version": "0.1.0-alpha",
+  "description": "A Discord bot where you can play a Demon Slayer RPG game.",
+  "main": "lib/index.js",
+  "scripts": {
+    "lint": "tslint -p tsconfig.json",
+    "prettier": "prettier -w src",
+
+    "run-builder": "node builder.js",
+    "build": "npm run run-builder && tsc && npm run prettier",
+
+    "start": "node lib/index.js",
+    "prod": "npm run build && npm run start"
+  },
+  "keywords": [
+    "discordbot",
+    "rpg",
+    "game",
+    "demonslayer"
+  ],
+  "author": "Elouann HOSTA",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^2.8.4",
+    "tslint": "^6.1.3",
+    "tslint-config-prettier": "^1.18.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "dotenv": "^16.1.3"
+  }
+}

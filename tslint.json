@@ -1,0 +1,11 @@
+{
+  "extends": [
+    "tslint:recommended",
+    "tslint-config-prettier"
+  ],
+  "rules": {
+    "no-console": false,
+    "max-classes-per-file": [true, 1],
+    "no-redundant-jsdoc": true
+  }
+}
