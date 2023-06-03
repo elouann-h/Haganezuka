@@ -1,7 +1,7 @@
 import { ApplicationCommandDataResolvable, Client, User } from 'discord.js';
 import * as fs from 'fs';
 
-import defaultData from '../../Res/ClientConfig';
+import defaultData from '../Res/ClientConfig';
 import { CommandType } from './Command';
 import CommandManager from './CommandManager';
 import EventManager from './EventManager';

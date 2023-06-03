@@ -1,4 +1,4 @@
-import { CommandType } from '../../Root/Classes/Command';
+import { CommandType } from '../../Root/Command';
 
 const data: CommandType = {
   name: 'ping',
