@@ -32,7 +32,7 @@ const defaultData = {
    * Whether the client should load commands or not. Load commands means sending commands to the API.
    * Don't activate this permanently, it's only on change.
    */
-  loadCommands: false,
+  loadCommands: true,
 };
 
 export default defaultData;

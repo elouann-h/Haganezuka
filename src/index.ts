@@ -4,9 +4,10 @@ dotenv.config();
 
 // Importing the database service and launch the client if the connection is successful.
 import dbservice from './database.service';
+import { err, log } from './Root/Util';
 dbservice()
-  .then(() => console.log('Database connected'))
-  .catch(console.error);
+  .then(() => log('Database connected'))
+  .catch(err);
 
 // Importing the client
 import Client from './Root/Client';

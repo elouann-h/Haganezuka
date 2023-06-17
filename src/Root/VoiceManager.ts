@@ -58,7 +58,7 @@ export default class VoiceManager {
   /**
    * The Discord Client instance.
    */
-  public readonly client: Client<boolean>;
+  public readonly client: Client;
   /**
    * The guild to look on.
    */

@@ -9,6 +9,7 @@ import * as Event from './Event';
 import * as VoiceManager from './VoiceManager';
 import { SFToUser } from './Util';
 import Context from './Context';
+import PlayerServer from '../Server/PlayerServer';
 
 /**
  * The pre-configured client class for the bot.
@@ -30,6 +31,10 @@ export default class extends Client {
    * The voice manager instance.
    */
   public readonly Voice: VoiceManager.default = new VoiceManager.default(this);
+  /**
+   * The player server instance.
+   */
+  public readonly PlayerServer: PlayerServer = new PlayerServer(this);
 
   /**
    * The constructor of the client.
@@ -51,12 +56,12 @@ export default class extends Client {
     const commandsList: ApplicationCommandDataResolvable[] = [];
 
     for (const file of dir) {
-      const command: CommandType = require(`../../${this.commandsDir}/${file}`).default as CommandType;
+      const command: CommandType = require(`../${this.commandsDir}/${file}`).default as CommandType;
       commandsList.push(command);
       this.Commands.add(command);
     }
 
-    await this.application.commands.set(commandsList);
+    if (defaultData.loadCommands) await this.application.commands.set(commandsList);
   }
 
   /**
@@ -95,7 +100,7 @@ export default class extends Client {
     }
 
     const logged: string = await super.login(token || this.token);
-    if (defaultData.loadCommands) await this.loadCommands();
+    await this.loadCommands();
 
     return logged;
   }

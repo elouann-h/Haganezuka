@@ -1,6 +1,7 @@
-import { ApplicationCommandData, ChatInputApplicationCommandData, ChatInputCommandInteraction } from 'discord.js';
+import { ChatInputApplicationCommandData, ChatInputCommandInteraction } from 'discord.js';
 
 import Client from './Client';
+import Context from './Context';
 
 /**
  * The type that represents a command with an additional function.
@@ -9,7 +10,7 @@ export type CommandType = ChatInputApplicationCommandData & {
   /**
    * The function that will be executed when the command is called.
    */
-  execute: (client: Client, interaction: ChatInputCommandInteraction) => Promise<void>;
+  execute: (client: Client, interaction: ChatInputCommandInteraction, ctx: Context) => Promise<void>;
   /**
    * The commands that must be executed before this one.
    * If one of the interfering commands are currently running, this command will be ignored.
@@ -58,6 +59,10 @@ export default class Command {
    * The function that will be executed when the command is called.
    */
   public execute: CommandType['execute'];
+  /**
+   * The context of the command.
+   */
+  public ctx: Context | undefined;
 
   /**
    * The constructor of the command.
@@ -66,5 +71,16 @@ export default class Command {
     this.client = client;
     this.data = data;
     this.execute = data.execute;
+  }
+
+  /**
+   * End the command. Call it when you want the command to be considered as finished and remove it from the interfering queue.
+   * @returns Void.
+   */
+  public end(): void {
+    if (!this.ctx) return;
+    if (!this.ctx.interaction) return;
+
+    this.client.Commands.Interfering.removeInterfering(this.ctx.interaction.user.id, this.ctx.interaction.id);
   }
 }

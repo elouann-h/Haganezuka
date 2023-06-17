@@ -1,8 +1,9 @@
-import { Collection, ChatInputCommandInteraction, BaseInteraction } from 'discord.js';
+import { Collection, BaseInteraction } from 'discord.js';
 
 import Command from './Command';
 import Client from './Client';
-import { log } from './Util';
+import { err, log } from './Util';
+import Context from './Context';
 
 /**
  * The model of a callback function for an event.
@@ -65,9 +66,17 @@ defaultEventsCb.set('ready', (client: Client): void => {
 });
 
 defaultEventsCb.set('interactionCreate', async (client: Client, interaction: BaseInteraction): Promise<void> => {
+  if (interaction.isButton() || interaction.isAnySelectMenu()) {
+    if ((interaction.customId as string).startsWith('autodefer')) {
+      await interaction.deferUpdate().catch(err);
+    }
+  }
   if (interaction.isChatInputCommand()) {
     const command: Command | undefined = client.Commands.getCommand(interaction.commandName);
     if (!command) return;
-    await command.execute(client, interaction);
+    const ctx: Context = new Context(interaction.channel, command, interaction, interaction.user);
+    command.ctx = ctx;
+    command.ctx.interaction = interaction;
+    await command.execute(client, interaction, ctx);
   }
 });
