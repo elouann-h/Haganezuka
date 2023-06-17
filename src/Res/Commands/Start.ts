@@ -3,7 +3,7 @@ import { ChatInputCommandInteraction, InteractionResponse, Message } from 'disco
 import { CommandType } from '../../Root/Command';
 import Client from '../../Root/Client';
 import Context from '../../Root/Context';
-import { err } from '../../Root/Util'
+import { err } from '../../Root/Util';
 
 const data: CommandType = {
   name: 'start',
