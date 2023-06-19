@@ -40,4 +40,17 @@ export type Way = 'warrior' | 'strategist' | 'agile' | 'goliath' | 'ninja';
 /**
  * The id of the race.
  */
-export type Race = 'Demon' | 'Human';
+export type Race = 'demon' | 'human';
+
+/**
+ * The id of the skill.
+ */
+export type Skill =
+  | 'strength'
+  | 'durability'
+  | 'endurance'
+  | 'speed'
+  | 'collection'
+  | 'recovery'
+  | 'synergy'
+  | 'mental';
