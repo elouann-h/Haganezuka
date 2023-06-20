@@ -75,8 +75,9 @@ defaultEventsCb.set('interactionCreate', async (client: Client, interaction: Bas
     const command: Command | undefined = client.Commands.getCommand(interaction.commandName);
     if (!command) return;
     const ctx: Context = new Context(interaction.channel, command, interaction, interaction.user);
+    ctx.command = command;
+    ctx.interaction = interaction;
     command.ctx = ctx;
-    command.ctx.interaction = interaction;
     await command.execute(client, interaction, ctx);
   }
 });

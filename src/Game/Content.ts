@@ -4,11 +4,11 @@ import { Skill, Way } from './Typings';
  * The emoji of each way.
  */
 export const wayEmojis: Record<Way, string> = {
-  warrior: '<:warrior:891978848669831936>',
-  strategist: '<:strategist:891978848669831936>',
-  agile: '<:agile:891978848669831936>',
-  goliath: '<:goliath:891978848669831936>',
-  ninja: '<:ninja:891978848669831936>',
+  warrior: '👺',
+  strategist: '🧪',
+  agile: '🔪',
+  goliath: '🪓',
+  ninja: '🥷',
 } as const;
 
 /**
@@ -47,10 +47,24 @@ export const wayDescriptions: Record<Way, string> = {
 /**
  * The main skill, bonus and malus of each way.
  */
-export const wayStats: Record<Way, Skill[]> = {
+export const waySkills: Record<Way, Skill[]> = {
   warrior: ['strength', 'durability', 'speed', 'recovery'],
   strategist: ['synergy', 'mental', 'speed', 'collection'],
   agile: ['endurance', 'speed', 'strength', 'recovery'],
   goliath: ['collection', 'strength', 'synergy', 'endurance'],
   ninja: ['speed', 'synergy', 'strength', 'durability'],
+};
+
+/**
+ * The name of each skill.
+ */
+export const skillNames: Record<Skill, string> = {
+  strength: 'Force Physique',
+  durability: 'Encaissement',
+  endurance: 'Endurance',
+  speed: 'Vitesse',
+  collection: 'Collecte',
+  recovery: 'Récupération',
+  synergy: 'Synergie',
+  mental: 'Force Mentale',
 };

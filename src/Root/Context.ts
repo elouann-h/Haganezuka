@@ -1,27 +1,27 @@
 import {
-  BaseGuildVoiceChannel,
-  BaseGuildTextChannel,
-  TextBasedChannel,
-  VoiceBasedChannel,
-  BaseInteraction,
-  User,
-  BaseMessageOptions,
-  EmbedBuilder,
-  Message,
-  Snowflake,
+  ActionRow,
   ActionRowBuilder,
+  BaseGuildTextChannel,
+  BaseGuildVoiceChannel,
+  BaseInteraction,
+  BaseMessageOptions,
   ButtonBuilder,
-  InteractionResponse,
-  MessageActionRowComponent,
-  SelectMenuBuilder,
-  SelectMenuOptionBuilder,
-  SelectMenuInteraction,
   ButtonInteraction,
+  EmbedBuilder,
+  InteractionResponse,
+  Message,
+  MessageActionRowComponent,
+  StringSelectMenuBuilder,
+  SelectMenuInteraction,
+  StringSelectMenuOptionBuilder,
+  TextBasedChannel,
+  User,
+  VoiceBasedChannel,
 } from 'discord.js';
 
-import { APIEmbedAuthor, ButtonStyle, ComponentType } from 'discord-api-types/v10';
+import { ButtonStyle, ComponentType } from 'discord-api-types/v10';
 
-import { log, Colors, SFToCtxChannel } from './Util';
+import { Colors, log } from './Util';
 import Command from './Command';
 import Client from './Client';
 
@@ -63,7 +63,7 @@ export default class Context {
   /**
    * The command associated with the context.
    */
-  public readonly command: Command | undefined;
+  public command: Command | undefined;
   /**
    * The interaction, if there is one.
    */
@@ -97,7 +97,7 @@ export default class Context {
    * @param data The data to transform.
    * @returns The transformed data.
    */
-  public transformData(data: BaseMessageOptions | string): BaseMessageOptions {
+  public transformMessageData(data: BaseMessageOptions | string): BaseMessageOptions {
     if (typeof data !== 'string') return data;
     let color: (typeof Colors)[keyof typeof Colors] = Colors.WHITE;
     if (data.includes('<:color:')) {
@@ -117,8 +117,50 @@ export default class Context {
   }
 
   /**
+   * Transform a MenuOptions into a full built StringSelectMenuBuilder.
+   * @param menuData The data to transform.
+   * @returns The transformed data.
+   */
+  public transformMenuData(menuData: MenuOptions): StringSelectMenuBuilder {
+    const menu: StringSelectMenuBuilder = new StringSelectMenuBuilder().setCustomId('autodefer_menu');
+
+    if ('placeholder' in menuData) menu.setPlaceholder(menuData.placeholder);
+    if ('maxValues' in menuData) menu.setMaxValues(menuData.maxValues);
+    if ('minValues' in menuData) menu.setMinValues(menuData.minValues);
+
+    for (const option of menuData.options) {
+      const optionBuilder: StringSelectMenuOptionBuilder = new StringSelectMenuOptionBuilder();
+      optionBuilder.setValue(option[0]);
+      optionBuilder.setLabel(option[1]);
+      if (option.length > 2) optionBuilder.setEmoji(option[2]);
+      menu.addOptions(optionBuilder);
+    }
+
+    return menu;
+  }
+
+  /**
+   * Generate two buttons for a choice between accept or cancel.
+   * @param buttonsToSet The buttons to set.
+   * @returns The generated buttons.
+   */
+  public generateValidOrCancelButtons(
+    buttonsToSet: ('accept' | 'decline' | 'leave')[] = ['accept', 'decline'],
+  ): ButtonBuilder[] {
+    const buttons: ButtonBuilder[] = [];
+    if (buttonsToSet.includes('accept'))
+      buttons.push(new ButtonBuilder().setCustomId('autodefer_accept').setStyle(ButtonStyle.Secondary).setEmoji('✅'));
+    if (buttonsToSet.includes('decline'))
+      buttons.push(new ButtonBuilder().setCustomId('autodefer_decline').setStyle(ButtonStyle.Secondary).setEmoji('❌'));
+    if (buttonsToSet.includes('leave'))
+      buttons.push(new ButtonBuilder().setCustomId('autodefer_leave').setStyle(ButtonStyle.Secondary).setEmoji('🚪'));
+    return buttons;
+  }
+
+  /**
    * Create a choice between accept or cancel.
    * @param messageData The message data to send (Discord.<BaseMessageOptions>).
+   * @param buttonsToSet The buttons to set.
    * @param timeout The time before the choice expires.
    * @param reply Whether to reply to the interaction or not.
    * @param messageToEdit The message to reply to if there is one.
@@ -126,17 +168,15 @@ export default class Context {
    */
   public async validOrCancelDialog(
     messageData: BaseMessageOptions | string,
+    buttonsToSet: ('accept' | 'decline' | 'leave')[] = ['accept', 'decline'],
     timeout: number,
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
   ): Promise<[string, Message | InteractionResponse] | null> {
-    const buttons: ButtonBuilder[] = [
-      new ButtonBuilder().setCustomId('autodefer_accept').setStyle(ButtonStyle.Secondary).setEmoji('✅'),
-      new ButtonBuilder().setCustomId('autodefer_decline').setStyle(ButtonStyle.Secondary).setEmoji('❌'),
-    ];
+    const buttons: ButtonBuilder[] = this.generateValidOrCancelButtons(buttonsToSet);
     const row: ActionRowBuilder = new ActionRowBuilder().addComponents(buttons);
 
-    let [response, message] = await this.messageComponentInteraction(messageData, row, timeout, reply, messageToEdit);
+    let [response, message] = await this.messageComponentInteraction(messageData, [row], timeout, reply, messageToEdit);
     if (!response) return null;
 
     // @ts-ignore
@@ -158,27 +198,93 @@ export default class Context {
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
   ): Promise<[string[], Message | InteractionResponse] | null> {
-    const menu: SelectMenuBuilder = new SelectMenuBuilder().setCustomId('autodefer_menu');
-
-    if ('placeholder' in menuData) menu.setPlaceholder(menuData.placeholder);
-    if ('maxValues' in menuData) menu.setMaxValues(menuData.maxValues);
-    if ('minValues' in menuData) menu.setMinValues(menuData.minValues);
-
-    for (const option of menuData.options) {
-      const optionBuilder: SelectMenuOptionBuilder = new SelectMenuOptionBuilder();
-      optionBuilder.setValue(option[0]);
-      optionBuilder.setLabel(option[1]);
-      if (option.length > 2) optionBuilder.setEmoji(option[2]);
-      menu.addOptions(optionBuilder);
-    }
+    const menu: StringSelectMenuBuilder = this.transformMenuData(menuData);
 
     const row: ActionRowBuilder = new ActionRowBuilder().addComponents(menu);
 
-    let [response, message] = await this.messageComponentInteraction(messageData, row, timeout, reply, messageToEdit);
+    let [response, message] = await this.messageComponentInteraction(messageData, [row], timeout, reply, messageToEdit);
     if (!response) return null;
 
     // @ts-ignore
     return [(response as SelectMenuInteraction).values, message];
+  }
+
+  /**
+   * Create a super panel with a select menu to switch pages, and a valid or cancel button.
+   * Returns the last page selected, the button clicked and the message.
+   * @param messageData The message data to send (Discord.<BaseMessageOptions>).
+   * @param menuData The choices to select from and other data like min and max.
+   * @param pageData The pages to switch between.
+   * @param buttonsToSet The buttons to set.
+   * @param timeout The time before the choice expires.
+   * @param reply Whether to reply to the interaction or not.
+   * @param messageToEdit The message to reply to if there is one.
+   */
+  public async panelDialog(
+    messageData: BaseMessageOptions | string,
+    menuData: MenuOptions,
+    pageData: [string, string][],
+    buttonsToSet: ('accept' | 'decline' | 'leave')[] = ['accept', 'decline'],
+    timeout: number,
+    reply: boolean = false,
+    messageToEdit?: Message | InteractionResponse | null,
+  ): Promise<[string, string, Message | InteractionResponse]> {
+    const menu: StringSelectMenuBuilder = this.transformMenuData(menuData);
+    const buttons: ButtonBuilder[] = this.generateValidOrCancelButtons(buttonsToSet);
+
+    const menuRow: ActionRowBuilder = new ActionRowBuilder().addComponents(menu);
+    const buttonsRow: ActionRowBuilder = new ActionRowBuilder().addComponents(buttons);
+
+    let pageFocusedOn: string = menuData.options[0][0];
+    let continueLoop: boolean = true;
+    let [response, message] = [null, null];
+
+    let accept: string = 'decline';
+
+    while (continueLoop) {
+      const pageContent: string = pageData.find((page: [string, string]): boolean => page[0] === pageFocusedOn)![1];
+      const messageEmbedData: BaseMessageOptions = this.transformMessageData(pageContent);
+
+      const answer: any[] = (await this.messageComponentInteraction(
+        Object.assign(messageData, messageEmbedData),
+        [menuRow, buttonsRow],
+        timeout,
+        reply,
+        messageToEdit,
+      )) || [null, null];
+
+      if (!answer) continueLoop = false;
+      else [response, message] = answer;
+      if (!messageToEdit) messageToEdit = message;
+
+      if (response.isAnySelectMenu()) pageFocusedOn = response.values[0];
+      else if (response.customId) {
+        continueLoop = false;
+
+        switch (response.customId) {
+          case 'autodefer_accept':
+            message = await this.edit(Object.assign(messageData, { components: [buttonsRow] }), message);
+            message = await this.chosenButton(['autodefer_accept'], message);
+            accept = 'accept';
+            break;
+          case 'autodefer_decline':
+            message = await this.edit(Object.assign(messageData, { components: [buttonsRow] }), message);
+            message = await this.chosenButton(['autodefer_decline'], message);
+            accept = 'decline';
+            break;
+          case 'autodefer_leave':
+            accept = 'leave';
+            break;
+          default:
+            accept = 'leave';
+            break;
+        }
+      }
+    }
+
+    if (!response) return null;
+
+    return [accept, pageFocusedOn, message];
   }
 
   /**
@@ -187,13 +293,13 @@ export default class Context {
    */
   public async messageComponentInteraction(
     messageData: BaseMessageOptions | string,
-    row: ActionRowBuilder,
+    rows: ActionRowBuilder[],
     timeout: number,
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
   ) {
-    const finaleMessageData: BaseMessageOptions = Object.assign(this.transformData(messageData), {
-      components: [row],
+    const finaleMessageData: BaseMessageOptions = Object.assign(this.transformMessageData(messageData), {
+      components: rows,
     });
     let message: InteractionResponse | Message | null;
 
@@ -208,7 +314,6 @@ export default class Context {
 
     const filter = (interaction): boolean => interaction.user.id === this.users[0].id;
     const response = await message.awaitMessageComponent({ filter, time: timeout }).catch(log);
-
     if (!response) return null;
 
     return [response, message];
@@ -222,7 +327,7 @@ export default class Context {
   public async send(messageData: BaseMessageOptions | string): Promise<Message | null> {
     if (!this.channel.isTextBased()) return null;
 
-    const message: void | Message = await this.channel.send(this.transformData(messageData)).catch(log);
+    const message: void | Message = await this.channel.send(this.transformMessageData(messageData)).catch(log);
     if (!message) return null;
 
     return message;
@@ -243,9 +348,9 @@ export default class Context {
 
     if (interaction.isRepliable()) {
       if (!interaction.deferred) {
-        message = await interaction.reply(this.transformData(messageData)).catch(log);
+        message = await interaction.reply(this.transformMessageData(messageData)).catch(log);
       } else {
-        message = await interaction.followUp(this.transformData(messageData)).catch(log);
+        message = await interaction.followUp(this.transformMessageData(messageData)).catch(log);
       }
     }
     if (!message) return null;
@@ -262,7 +367,7 @@ export default class Context {
   public async edit(messageData: BaseMessageOptions | string, message: Message): Promise<Message | null> {
     if (!this.channel.isTextBased()) return null;
 
-    messageData = this.transformData(messageData);
+    messageData = this.transformMessageData(messageData);
     if (!('components' in messageData)) {
       messageData.components = [];
     }
@@ -283,32 +388,47 @@ export default class Context {
    * @returns The message instance, or null if not sent.
    */
   public async chosenButton(buttonsId: string[], message: Message): Promise<Message | null> {
-    const buttons: MessageActionRowComponent[] = message.components[0].components;
-    const newButtons: ButtonBuilder[] = [];
+    const fullRows: ActionRowBuilder[] = [];
+    const componentRows: ActionRow<MessageActionRowComponent>[] = message.components;
 
-    for (const button of buttons) {
-      if (button.type !== ComponentType.Button) continue;
-
-      const buttonUpdated: ButtonBuilder = new ButtonBuilder()
-        .setCustomId(button.customId)
-        .setStyle(button.style)
-        .setDisabled(true);
-
-      if (button.label) buttonUpdated.setLabel(button.label);
-      if (button.emoji) buttonUpdated.setEmoji(button.emoji);
-
-      if (buttonsId.includes(button.customId)) {
-        if (button.customId.includes('accept')) buttonUpdated.setStyle(ButtonStyle.Success);
-        if (button.customId.includes('decline')) {
-          buttonUpdated.setStyle(ButtonStyle.Danger);
-          buttonUpdated.setEmoji('✖️');
-        }
+    for (const row of componentRows) {
+      const components: MessageActionRowComponent[] = row.components;
+      if (components.length === 0) continue;
+      if (components[0].type !== ComponentType.Button) {
+        // @ts-ignore
+        const rowUpdated: ActionRowBuilder = new ActionRowBuilder().setComponents(components);
+        fullRows.push(rowUpdated);
+        continue;
       }
-      newButtons.push(buttonUpdated);
+
+      const newButtons: ButtonBuilder[] = [];
+
+      for (const button of components) {
+        if (button.type !== ComponentType.Button) continue;
+
+        const buttonUpdated: ButtonBuilder = new ButtonBuilder()
+          .setCustomId(button.customId)
+          .setStyle(button.style)
+          .setDisabled(true);
+
+        if (button.label) buttonUpdated.setLabel(button.label);
+        if (button.emoji) buttonUpdated.setEmoji(button.emoji);
+
+        if (buttonsId.includes(button.customId)) {
+          if (button.customId.includes('accept')) buttonUpdated.setStyle(ButtonStyle.Success);
+          if (button.customId.includes('decline')) {
+            buttonUpdated.setStyle(ButtonStyle.Danger);
+            buttonUpdated.setEmoji('✖️');
+          }
+          if (button.customId.includes('leave')) buttonUpdated.setStyle(ButtonStyle.Primary);
+        }
+        newButtons.push(buttonUpdated);
+      }
+
+      fullRows.push(new ActionRowBuilder().addComponents(newButtons));
     }
 
-    const row: ActionRowBuilder = new ActionRowBuilder().addComponents(newButtons);
     // @ts-ignore
-    return await this.edit({ components: [row] }, message);
+    return await this.edit({ components: fullRows }, message);
   }
 }

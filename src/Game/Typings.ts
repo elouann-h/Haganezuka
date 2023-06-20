@@ -54,3 +54,8 @@ export type Skill =
   | 'recovery'
   | 'synergy'
   | 'mental';
+
+/**
+ * The vowels of the alphabet.
+ */
+export const Vowels = ['a', 'e', 'i', 'o', 'u', 'y'] as const;
