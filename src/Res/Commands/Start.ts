@@ -151,11 +151,10 @@ const data: CommandType = {
     }
     wayChoice = wayPage;
 
-    const artText: string =
-      '## Votre Art/Ensemble de techniques\nSi vous êtes un humain, vous devrez vous armez du **Style de Souffle** de votre choix.' +
-      " Tandis que si vous êtes un démon, c'est un **Pouvoir Sanguinaire qu'il faudra choisir.**";
     await ctx.edit(
-      `Vous êtes désormais un adepte de la Voie **« ${wayNames[wayChoice]} »**\n\n${artText}.<:color:GREEN>`,
+      `Vous êtes désormais un adepte de la Voie **« ${wayNames[wayChoice]} »**\n\n` +
+        '## Votre Art/Ensemble de techniques\nSi vous êtes un humain, vous devrez vous armez du **Style de Souffle** de votre choix.' +
+        " Tandis que si vous êtes un démon, c'est un **Pouvoir Sanguinaire qu'il faudra choisir**.<:color:GREEN>`",
       wayMessage as Message,
     );
 
@@ -194,9 +193,13 @@ const data: CommandType = {
       (art: (typeof artList)[0]): boolean => art.id === artChoice,
     );
     await ctx.edit(
-      `Vous êtes désormais un adepte l'ensemble de techniques **« ${artInfos.name} »**.<:color:GREEN>`,
+      `Vous êtes désormais un adepte l'ensemble de techniques **« ${artInfos.name} »**.\n\n` +
+        `## Nom d'Utilisateur\nIl est désormais temps de choisir votre identité. Écrivez un nom, celui que vous souhaitez utiliser durant votre aventure.` +
+        `<:color:GREEN>`,
       artMessage as Message,
     );
+
+    // #### CHOIX DU NOM D'UTILISATEUR ############################################################################## //
 
     const player: void = await client.PlayerServer.create(interaction.user.id);
   },

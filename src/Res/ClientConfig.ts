@@ -36,7 +36,7 @@ const defaultData = {
   /**
    * Represents the default timeout for any message component interaction.
    */
-  defaultComponentTimeout: 5000,
+  defaultComponentTimeout: 120000,
 };
 
 export default defaultData;

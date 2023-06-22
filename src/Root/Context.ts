@@ -12,14 +12,13 @@ import {
   Message,
   MessageActionRowComponent,
   StringSelectMenuBuilder,
-  SelectMenuInteraction,
   StringSelectMenuOptionBuilder,
   TextBasedChannel,
   User,
   VoiceBasedChannel,
 } from 'discord.js';
 
-import { ButtonStyle, ComponentType } from 'discord-api-types/v10';
+import { ButtonStyle, ComponentType, TextInputStyle } from 'discord-api-types/v10';
 
 import { Colors, log } from './Util';
 import Command from './Command';
@@ -50,6 +49,45 @@ export interface MenuOptions {
    * The min values.
    */
   minValues?: number;
+}
+
+/**
+ * Represents the interface for options/data of a modal.
+ */
+export interface ModalOptions {
+  /**
+   * The title.
+   */
+  title: string;
+  /**
+   * The list of components/text fields.
+   */
+  fields: {
+    /**
+     * The label of the field.
+     */
+    label: string;
+    /**
+     * The min length of the field.
+     */
+    minLength?: number;
+    /**
+     * The max length of the field.
+     */
+    maxLength?: number;
+    /**
+     * The placeholder of the field.
+     */
+    placeholder?: string;
+    /**
+     * The style of the field.
+     */
+    style: TextInputStyle;
+    /**
+     * The id of the field.
+     */
+    id: string;
+  }[];
 }
 
 /**
@@ -184,29 +222,34 @@ export default class Context {
   }
 
   /**
-   * Create a selection between multiple choices.
+   * Create a modal dialog based on an interaction.
    * @param messageData The message data to send (Discord.<BaseMessageOptions>).
-   * @param menuData The choices to select from and other data like min and max.
+   * @param contentToShow The content where will appear the current value.
+   * @param modalData The data to show in the modal.
    * @param timeout The time before the choice expires.
    * @param reply Whether to reply to the interaction or not.
    * @param messageToEdit The message to reply to if there is one.
    */
-  public async menuDialog(
-    messageData: BaseMessageOptions | string,
-    menuData: MenuOptions,
+  public async modalDialog(
+    contentToShow: string,
+    modalData: ModalOptions,
     timeout: number,
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
-  ): Promise<[string[], Message | InteractionResponse] | [null, any]> {
-    const menu: StringSelectMenuBuilder = this.transformMenuData(menuData);
+  ) {
+    const buttons: ButtonBuilder[] = [
+      new ButtonBuilder().setCustomId('autodefer_modal').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
+    ].concat(this.generateValidOrCancelButtons(['accept', 'leave']));
 
-    const row: ActionRowBuilder = new ActionRowBuilder().addComponents(menu);
+    const row: ActionRowBuilder = new ActionRowBuilder().addComponents(buttons);
+    const fullMessageData: BaseMessageOptions = Object.assign(this.transformMessageData(contentToShow), {
+      components: [row],
+    });
 
-    let [response, message] = await this.messageComponentInteraction(messageData, [row], timeout, reply, messageToEdit);
-    if (!response) return [null, message || null];
+    const message: Message | InteractionResponse = await this.send(fullMessageData);
+    if (!message) return null;
 
-    // @ts-ignore
-    return [(response as SelectMenuInteraction).values, message];
+    let loop: boolean = true;
   }
 
   /**
