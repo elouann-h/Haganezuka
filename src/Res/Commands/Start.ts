@@ -3,9 +3,11 @@ import { ChatInputCommandInteraction, InteractionResponse, Message } from 'disco
 import { CommandType } from '../../Root/Command';
 import Client from '../../Root/Client';
 import Context from '../../Root/Context';
-import { err } from '../../Root/Util';
 import { wayNames, waySkills, wayEmojis, wayDescriptions, skillNames } from '../../Game/Content';
 import { Vowels, Way } from '../../Game/Typings';
+import BloodDemonArts from '../../Game/BloodDemonArts';
+import BreathingStyles from '../../Game/BreathingStyles';
+import ClientConfig from '../ClientConfig';
 
 const data: CommandType = {
   name: 'start',
@@ -24,28 +26,15 @@ const data: CommandType = {
     let [wantToStart, startMessage]: [string, Message | InteractionResponse] | null = await ctx.validOrCancelDialog(
       `${beginText}<:color:WHITE>`,
       ['accept', 'decline'],
-      60000,
+      ClientConfig.defaultComponentTimeout,
       true,
     );
-
-    if (startMessage instanceof InteractionResponse) startMessage = await startMessage.fetch().catch(err as never);
-
     if (wantToStart === null) {
       await ctx.edit("Vous n'avez pas répondu à temps, la demande est annulée.<:color:WHITE>", startMessage as Message);
       return ctx.command.end();
     }
-    // ############################################################################################################## //
-    // ########## CREATION DU PROFIL ################################################################################ //
-    // ############################################################################################################## //
+
     let userStarts: boolean = false;
-    let raceChoice: string | null = null;
-    let usernameChoice: string | null = null;
-    let artChoice: string | null = null;
-    let wayChoice: string | null = null;
-
-    // #### CHOIX DE LA RACE ######################################################################################## //
-    let raceMessage: Message | InteractionResponse | null = null;
-
     switch (wantToStart) {
       case 'autodefer_accept':
         await ctx.edit(
@@ -62,6 +51,16 @@ const data: CommandType = {
         break;
     }
     if (!userStarts) return ctx.command.end();
+    // ############################################################################################################## //
+    // ########## CREATION DU PROFIL ################################################################################ //
+    // ############################################################################################################## //
+    let raceChoice: string | null = null;
+    let wayChoice: string | null = null;
+    let artChoice: string | null = null;
+    let usernameChoice: string | null = null;
+
+    // #### CHOIX DE LA RACE ######################################################################################## //
+    let raceMessage: Message | InteractionResponse | null;
 
     const raceChoiceText: string =
       '## Parfait ! Avant de commencer...\n\n' +
@@ -73,9 +72,12 @@ const data: CommandType = {
     [raceChoice, raceMessage] = await ctx.validOrCancelDialog(
       `${raceChoiceText}<:color:WHITE>`,
       ['accept', 'decline', 'leave'],
-      60000,
+      ClientConfig.defaultComponentTimeout,
     );
-
+    if (raceChoice === null) {
+      await ctx.edit("Vous n'avez pas répondu à temps, la demande est annulée.<:color:WHITE>", raceMessage as Message);
+      return ctx.command.end();
+    }
     const wayText: string =
       "## Votre Voie\nIl est temps de choisir votre Voie. Une Voie est une pré-sélection d'atouts et de malus parmi vos compétences. Sélectionnez celle qui vous ressemble le plus !";
     switch (raceChoice) {
@@ -86,7 +88,6 @@ const data: CommandType = {
             `\n\nVous êtes désormais un **démon** !\n\n${wayText}<:color:GREEN>`,
           raceMessage as Message,
         );
-        userStarts = true;
         break;
       case 'autodefer_decline':
         raceChoice = 'human';
@@ -118,9 +119,8 @@ const data: CommandType = {
       wayContents[way as Way] += `- Malus n°1 : ${skillNames[waySkills[way as Way][2]]}\n`;
       wayContents[way as Way] += `- Malus n°2 : ${skillNames[waySkills[way as Way][3]]}\n`;
     }
-
     const [wayDecision, wayPage, wayMessage]: [string, string, Message | InteractionResponse] = await ctx.panelDialog(
-      'Quelle Voie souhaitez-vous emprunter ?\n\n<:color:WHITE>',
+      '',
       {
         options: [
           ['warrior', 'Guerrier', wayEmojis.warrior],
@@ -138,19 +138,64 @@ const data: CommandType = {
         ['ninja', wayContents.ninja],
       ],
       ['accept', 'leave'],
-      60000,
+      ClientConfig.defaultComponentTimeout,
       false,
     );
-
+    if (wayDecision === null) {
+      await ctx.edit("Vous n'avez pas répondu à temps, la demande est annulée.<:color:WHITE>", wayMessage as Message);
+      return ctx.command.end();
+    }
     if (wayDecision.includes('leave')) {
       await ctx.edit("Vous n'avez pas choisi de Voie, la demande est annulée.<:color:RED>", wayMessage as Message);
       return ctx.command.end();
     }
     wayChoice = wayPage;
 
+    const artText: string =
+      '## Votre Art/Ensemble de techniques\nSi vous êtes un humain, vous devrez vous armez du **Style de Souffle** de votre choix.' +
+      " Tandis que si vous êtes un démon, c'est un **Pouvoir Sanguinaire qu'il faudra choisir.**";
     await ctx.edit(
-      `Vous êtes désormais un adepte de la Voie **« ${wayNames[wayChoice]} »**.<:color:GREEN>`,
+      `Vous êtes désormais un adepte de la Voie **« ${wayNames[wayChoice]} »**\n\n${artText}.<:color:GREEN>`,
       wayMessage as Message,
+    );
+
+    // #### CHOIX DE L'ART ########################################################################################## //
+    const artType: string = ['Style de Souffle : ', 'Pouvoir Sanguinaire : '][raceChoice === 'human' ? 0 : 1];
+    const artList: typeof BloodDemonArts | typeof BreathingStyles =
+      raceChoice === 'human' ? BreathingStyles : BloodDemonArts;
+    const artContents: Record<string, string> = {};
+    for (const art of artList) {
+      artContents[art.id] = `## ${artType} ${art.name}\n\n`;
+      artContents[art.id] += `### Techniques:\n${art.moves.map((tech: string): string => `- ${tech}`).join('\n')}\n\n`;
+    }
+    const [artDecision, artPage, artMessage]: [string, string, Message | InteractionResponse] = await ctx.panelDialog(
+      '',
+      {
+        options: artList.map((art: (typeof BreathingStyles)[0]): [string, string] => [art.id, art.name]),
+      },
+      artList.map((art: (typeof BreathingStyles)[0]): [string, string] => [art.id, artContents[art.id]]),
+      ['accept', 'leave'],
+      ClientConfig.defaultComponentTimeout,
+    );
+    if (artDecision === null) {
+      await ctx.edit("Vous n'avez pas répondu à temps, la demande est annulée.<:color:WHITE>", artMessage as Message);
+      return ctx.command.end();
+    }
+    if (artDecision.includes('leave')) {
+      await ctx.edit(
+        "Vous n'avez pas choisi d'ensemble de techniques, la demande est annulée.<:color:RED>",
+        artMessage as Message,
+      );
+      return ctx.command.end();
+    }
+    artChoice = artPage;
+
+    const artInfos: (typeof BreathingStyles)[0] = artList.find(
+      (art: (typeof artList)[0]): boolean => art.id === artChoice,
+    );
+    await ctx.edit(
+      `Vous êtes désormais un adepte l'ensemble de techniques **« ${artInfos.name} »**.<:color:GREEN>`,
+      artMessage as Message,
     );
 
     const player: void = await client.PlayerServer.create(interaction.user.id);

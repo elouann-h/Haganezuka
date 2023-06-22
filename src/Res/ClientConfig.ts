@@ -33,6 +33,10 @@ const defaultData = {
    * Don't activate this permanently, it's only on change.
    */
   loadCommands: true,
+  /**
+   * Represents the default timeout for any message component interaction.
+   */
+  defaultComponentTimeout: 5000,
 };
 
 export default defaultData;

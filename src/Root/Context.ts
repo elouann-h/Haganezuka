@@ -172,12 +172,12 @@ export default class Context {
     timeout: number,
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
-  ): Promise<[string, Message | InteractionResponse] | null> {
+  ): Promise<[string, Message | InteractionResponse] | [null, any]> {
     const buttons: ButtonBuilder[] = this.generateValidOrCancelButtons(buttonsToSet);
     const row: ActionRowBuilder = new ActionRowBuilder().addComponents(buttons);
 
     let [response, message] = await this.messageComponentInteraction(messageData, [row], timeout, reply, messageToEdit);
-    if (!response) return null;
+    if (!response) return [null, message || null];
 
     // @ts-ignore
     return [(response as ButtonInteraction).customId, message];
@@ -197,13 +197,13 @@ export default class Context {
     timeout: number,
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
-  ): Promise<[string[], Message | InteractionResponse] | null> {
+  ): Promise<[string[], Message | InteractionResponse] | [null, any]> {
     const menu: StringSelectMenuBuilder = this.transformMenuData(menuData);
 
     const row: ActionRowBuilder = new ActionRowBuilder().addComponents(menu);
 
     let [response, message] = await this.messageComponentInteraction(messageData, [row], timeout, reply, messageToEdit);
-    if (!response) return null;
+    if (!response) return [null, message || null];
 
     // @ts-ignore
     return [(response as SelectMenuInteraction).values, message];
@@ -228,7 +228,7 @@ export default class Context {
     timeout: number,
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
-  ): Promise<[string, string, Message | InteractionResponse]> {
+  ): Promise<[string, string, Message | InteractionResponse] | [null, null, any]> {
     const menu: StringSelectMenuBuilder = this.transformMenuData(menuData);
     const buttons: ButtonBuilder[] = this.generateValidOrCancelButtons(buttonsToSet);
 
@@ -257,6 +257,7 @@ export default class Context {
       else [response, message] = answer;
       if (!messageToEdit) messageToEdit = message;
 
+      if (!response) break;
       if (response.isAnySelectMenu()) pageFocusedOn = response.values[0];
       else if (response.customId) {
         continueLoop = false;
@@ -282,7 +283,7 @@ export default class Context {
       }
     }
 
-    if (!response) return null;
+    if (!response) return [null, null, message || null];
 
     return [accept, pageFocusedOn, message];
   }
@@ -310,11 +311,11 @@ export default class Context {
       else if (messageToEdit instanceof InteractionResponse)
         message = await this.edit(finaleMessageData, await messageToEdit.fetch());
     }
-    if (!message) return null;
+    if (!message) return [null, message || null];
 
     const filter = (interaction): boolean => interaction.user.id === this.users[0].id;
     const response = await message.awaitMessageComponent({ filter, time: timeout }).catch(log);
-    if (!response) return null;
+    if (!response) return [null, message || null];
 
     return [response, message];
   }
@@ -375,6 +376,7 @@ export default class Context {
       await message.removeAttachments().catch(log);
     }
 
+    if (!message) return null;
     const editedMessage: void | Message = await message.edit(messageData).catch(log);
     if (!editedMessage) return null;
 

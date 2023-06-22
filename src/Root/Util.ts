@@ -7,7 +7,7 @@ import { ContextChannel } from './Context';
  * @returns Void.
  */
 export function log(...args: any[]): void {
-  console.log('⟦HAGANEZUKA LOG⟧', ...args);
+  console.log('⟦HAGANEZUKA LOG⟧', ...args.map((arg: any): any => arg.message || arg));
 }
 
 /**
@@ -16,7 +16,7 @@ export function log(...args: any[]): void {
  * @returns Void.
  */
 export function test(...args: any[]): void {
-  console.log('⟦HAGANEZUKA TEST⟧', ...args);
+  console.log('⟦HAGANEZUKA TEST⟧', ...args.map((arg: any): any => arg.message || arg));
 }
 
 /**
@@ -25,7 +25,7 @@ export function test(...args: any[]): void {
  * @returns Void.
  */
 export function err(...args: any[]): void {
-  console.error('⟦HAGANEZUKA ERROR⟧', ...args);
+  console.error('⟦HAGANEZUKA ERROR⟧', ...args.map((arg: any): any => arg.message || arg));
 }
 
 /**

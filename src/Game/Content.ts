@@ -60,10 +60,10 @@ export const waySkills: Record<Way, Skill[]> = {
  */
 export const skillNames: Record<Skill, string> = {
   strength: 'Force Physique',
-  durability: 'Encaissement',
+  durability: 'Durabilité',
   endurance: 'Endurance',
   speed: 'Vitesse',
-  collection: 'Collecte',
+  collection: 'Encaissement',
   recovery: 'Récupération',
   synergy: 'Synergie',
   mental: 'Force Mentale',

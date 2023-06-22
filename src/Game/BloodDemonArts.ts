@@ -1,3 +1,5 @@
+import BreathingStyles from './BreathingStyles';
+
 const bloodDemonArts = [
   {
     id: 'explodingBlood',
@@ -183,7 +185,9 @@ const bloodDemonArts = [
   },
   {
     id: 'crescentMoonBlades',
-    ref: 'breathingStyles.moon',
+    name: 'Lames de Croissant de Lune',
+    moves: BreathingStyles.find((style: (typeof BreathingStyles)[0]) => style.id === 'moon').moves,
+    movesCategories: BreathingStyles.find((style: (typeof BreathingStyles)[0]) => style.id === 'moon').movesCategories,
   },
 ];
 
