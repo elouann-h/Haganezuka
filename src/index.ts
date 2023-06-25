@@ -20,3 +20,7 @@ client.Events.bindEvent('interactionCreate');
 
 // Logging in the client
 void client.login(process.env.TOKEN);
+
+setInterval((): void => {
+  console.log(client.Commands.Interfering.queue);
+}, 500);

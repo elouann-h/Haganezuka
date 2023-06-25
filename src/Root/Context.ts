@@ -11,18 +11,22 @@ import {
   InteractionResponse,
   Message,
   MessageActionRowComponent,
+  ModalActionRowComponentBuilder,
+  ModalBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   TextBasedChannel,
+  TextInputBuilder,
   User,
   VoiceBasedChannel,
 } from 'discord.js';
 
 import { ButtonStyle, ComponentType, TextInputStyle } from 'discord-api-types/v10';
 
-import { Colors, log } from './Util';
+import { Colors, err, extractString, log, readEmbeds } from './Util';
 import Command from './Command';
 import Client from './Client';
+import ClientConfig from '../Res/ClientConfig';
 
 /**
  * Represents the type for a context possible channel type among Discord package.
@@ -87,6 +91,14 @@ export interface ModalOptions {
      * The id of the field.
      */
     id: string;
+    /**
+     * If the field is required or not.
+     */
+    required?: boolean;
+    /**
+     * The default value for the field.
+     */
+    value?: string;
   }[];
 }
 
@@ -178,6 +190,35 @@ export default class Context {
   }
 
   /**
+   * Transform a ModalOptions into a full built ActionRowBuilder.
+   * @param modalData The data to transform.
+   * @returns The transformed data.
+   */
+  public transformModalData(modalData: ModalOptions) {
+    const modal: ModalBuilder = new ModalBuilder().setCustomId('modal').setTitle(modalData.title);
+
+    for (const field of modalData.fields) {
+      const textInput: TextInputBuilder = new TextInputBuilder();
+      textInput.setCustomId(field.id);
+      textInput.setLabel(field.label);
+      textInput.setStyle(field.style);
+
+      if ('minLength' in field) textInput.setMinLength(field.minLength);
+      if ('maxLength' in field) textInput.setMaxLength(field.maxLength);
+      if ('placeholder' in field) textInput.setPlaceholder(field.placeholder);
+      if ('required' in field) textInput.setRequired(field.required);
+      if ('value' in field) textInput.setValue(field.value);
+
+      const inputRow: ActionRowBuilder<ModalActionRowComponentBuilder> =
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(textInput);
+
+      modal.addComponents(inputRow);
+    }
+
+    return modal;
+  }
+
+  /**
    * Generate two buttons for a choice between accept or cancel.
    * @param buttonsToSet The buttons to set.
    * @returns The generated buttons.
@@ -223,33 +264,82 @@ export default class Context {
 
   /**
    * Create a modal dialog based on an interaction.
-   * @param messageData The message data to send (Discord.<BaseMessageOptions>).
    * @param contentToShow The content where will appear the current value.
    * @param modalData The data to show in the modal.
    * @param timeout The time before the choice expires.
+   * @param customId The custom id if defined for the modal to show.
    * @param reply Whether to reply to the interaction or not.
    * @param messageToEdit The message to reply to if there is one.
    */
   public async modalDialog(
-    contentToShow: string,
+    contentToShow: [string, RegExp],
     modalData: ModalOptions,
     timeout: number,
+    customId: string = 'modal',
     reply: boolean = false,
     messageToEdit?: Message | InteractionResponse | null,
-  ) {
+  ): Promise<[string, string, Message | InteractionResponse]> {
     const buttons: ButtonBuilder[] = [
-      new ButtonBuilder().setCustomId('autodefer_modal').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
+      new ButtonBuilder().setCustomId('modal').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
     ].concat(this.generateValidOrCancelButtons(['accept', 'leave']));
 
     const row: ActionRowBuilder = new ActionRowBuilder().addComponents(buttons);
-    const fullMessageData: BaseMessageOptions = Object.assign(this.transformMessageData(contentToShow), {
-      components: [row],
-    });
+    const modal: ModalBuilder = this.transformModalData(modalData);
+    modal.setCustomId(customId);
 
-    const message: Message | InteractionResponse = await this.send(fullMessageData);
-    if (!message) return null;
+    let message: Message | InteractionResponse | null;
 
     let loop: boolean = true;
+    let response = null;
+    let accept: string = 'leave';
+    let value: string = 'Rien';
+
+    while (loop) {
+      message = message ? (await message.fetch().catch(err)) || message : message || null;
+      value = message ? extractString(contentToShow[1], readEmbeds(message as Message)) : 'Rien';
+
+      const messageEmbedData: BaseMessageOptions = this.transformMessageData(
+        message
+          ? contentToShow[0].replace(
+              '{value}',
+              extractString(
+                contentToShow[1],
+                (message instanceof InteractionResponse ? await message.fetch() : message).embeds[0].description,
+              ),
+            )
+          : contentToShow[0].replace('{value}', value),
+      );
+
+      const answer: any[] = (await this.messageComponentInteraction(
+        messageEmbedData,
+        [row],
+        timeout,
+        reply,
+        messageToEdit,
+      )) || [null, null];
+
+      if (!answer) loop = false;
+      else [response, message] = answer;
+      if (!messageToEdit) messageToEdit = message;
+
+      if (!response || !response.customId) {
+        loop = false;
+        break;
+      }
+      if (response.customId.includes('leave')) loop = false;
+      if (response.customId.includes('accept')) {
+        message = await this.chosenButton(['autodefer_accept'], message as Message);
+        accept = 'accept';
+        loop = false;
+        message = message ? (await message.fetch().catch(err)) || message : message || null;
+        value = message ? extractString(contentToShow[1], readEmbeds(message as Message)) : 'Rien';
+      }
+      if (response.customId.includes('modal')) await (response as ButtonInteraction).showModal(modal).catch(err);
+    }
+
+    if (!response) return [null, null, message || null];
+
+    return [accept, value, message];
   }
 
   /**
@@ -279,12 +369,12 @@ export default class Context {
     const buttonsRow: ActionRowBuilder = new ActionRowBuilder().addComponents(buttons);
 
     let pageFocusedOn: string = menuData.options[0][0];
-    let continueLoop: boolean = true;
+    let loop: boolean = true;
     let [response, message] = [null, null];
 
     let accept: string = 'decline';
 
-    while (continueLoop) {
+    while (loop) {
       const pageContent: string = pageData.find((page: [string, string]): boolean => page[0] === pageFocusedOn)![1];
       const messageEmbedData: BaseMessageOptions = this.transformMessageData(pageContent);
 
@@ -296,14 +386,14 @@ export default class Context {
         messageToEdit,
       )) || [null, null];
 
-      if (!answer) continueLoop = false;
+      if (!answer) loop = false;
       else [response, message] = answer;
       if (!messageToEdit) messageToEdit = message;
 
-      if (!response) break;
+      if (!response) loop = false;
       if (response.isAnySelectMenu()) pageFocusedOn = response.values[0];
       else if (response.customId) {
-        continueLoop = false;
+        loop = false;
 
         switch (response.customId) {
           case 'autodefer_accept':
@@ -406,16 +496,21 @@ export default class Context {
    * Edit a message in a text based channel (text, thread, announcements...).
    * @param messageData The message data to send (Discord.<BaseMessageOptions>).
    * @param message The message to edit.
+   * @param ignorePresentFields A boolean that indicates if the components/files need to be removed if the object is not passed.
    * @returns The message instance, or null if not sent.
    */
-  public async edit(messageData: BaseMessageOptions | string, message: Message): Promise<Message | null> {
+  public async edit(
+    messageData: BaseMessageOptions | string,
+    message: Message,
+    ignorePresentFields: boolean = false,
+  ): Promise<Message | null> {
     if (!this.channel.isTextBased()) return null;
 
     messageData = this.transformMessageData(messageData);
-    if (!('components' in messageData)) {
+    if (!('components' in messageData) && !ignorePresentFields) {
       messageData.components = [];
     }
-    if ('files' in messageData && messageData.files.length > 0) {
+    if ('files' in messageData && messageData.files.length > 0 && !ignorePresentFields) {
       await message.removeAttachments().catch(log);
     }
 
@@ -424,6 +519,30 @@ export default class Context {
     if (!editedMessage) return null;
 
     return editedMessage;
+  }
+
+  /**
+   * Add some content to a message with a single embed OR a content.
+   * @param contentToAdd The content to add to the content already written.
+   * @param message The message to edit.
+   * @param contentOrEmbed Specify which place edit if there is both.
+   * @param ignorePresentFields A boolean that indicates if the components/files need to be removed if the object is not passed.
+   * @returns The edit message.
+   */
+  public async addContent(
+    contentToAdd: string,
+    message: Message | InteractionResponse,
+    contentOrEmbed: 'content' | 'embed' = 'content',
+    ignorePresentFields: boolean = false,
+  ): Promise<Message> {
+    if (message instanceof InteractionResponse) message = await message.fetch();
+    const hasBoth: boolean = message.content && (message.embeds.length > 0 ? !!message.embeds[0].description : false);
+
+    const whatEdit: 'content' | 'embed' = message.content ? 'content' : 'embed';
+    if ((!hasBoth && whatEdit === 'content') || (hasBoth && contentOrEmbed === 'content'))
+      return await this.edit({ content: message.content + contentToAdd }, message, ignorePresentFields);
+    if ((!hasBoth && whatEdit === 'embed') || (hasBoth && contentOrEmbed === 'embed'))
+      return await this.edit(message.embeds[0].description + contentToAdd, message, ignorePresentFields);
   }
 
   /**

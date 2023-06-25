@@ -1,4 +1,4 @@
-import { Client, Guild, GuildBasedChannel, GuildMember, Snowflake, User } from 'discord.js';
+import { Client, Embed, Guild, GuildBasedChannel, GuildMember, Message, Snowflake, User } from 'discord.js';
 import { ContextChannel } from './Context';
 
 /**
@@ -99,6 +99,31 @@ export async function SFToCtxChannel(client: Client, guildID: Snowflake, channel
     channelInstance = guild.channels.cache.find((c: GuildBasedChannel): boolean => c.name.startsWith(channel));
 
   return channelInstance as ContextChannel;
+}
+
+/**
+ * Get a message embed content.
+ * @param message The message to read.
+ * @returns The message content.
+ */
+export function readEmbeds(message: Message): string {
+  return message.embeds
+    .map((value: Embed): string => `${value.title || ''} - ${value.description || ''}`)
+    .reduce((previousValue: string, currentValue: string): string => `${previousValue} - ${currentValue}`);
+}
+
+/**
+ * Extract the data from a string, applying a regular expression to match the data.
+ * @param regexp The RegExp to match on.
+ * @param str The string to test on.
+ * @returns The matching value.
+ */
+export function extractString(regexp: RegExp, str: string): string | null {
+  const matches: RegExpMatchArray = str.match(regexp);
+
+  if (matches && matches.length > 1) return matches[1];
+
+  return null;
 }
 
 /**
