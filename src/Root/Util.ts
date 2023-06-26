@@ -1,3 +1,5 @@
+// noinspection JSUnusedGlobalSymbols
+
 import { Client, Embed, Guild, GuildBasedChannel, GuildMember, Message, Snowflake, User } from 'discord.js';
 import { ContextChannel } from './Context';
 

@@ -37,13 +37,4 @@ export default class EventManager {
     this.events.set(name, event);
     return event;
   }
-
-  /**
-   * Unbind a specific event. Doesn't have any effect when the bot is launched.
-   * @param name The event name.
-   * @returns True if the command has been removed, or false if not.
-   */
-  public unbindEvent(name: string): boolean {
-    return this.events.delete(name);
-  }
 }

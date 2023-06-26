@@ -26,7 +26,6 @@ import { ButtonStyle, ComponentType, TextInputStyle } from 'discord-api-types/v1
 import { Colors, err, extractString, log, readEmbeds } from './Util';
 import Command from './Command';
 import Client from './Client';
-import ClientConfig from '../Res/ClientConfig';
 
 /**
  * Represents the type for a context possible channel type among Discord package.

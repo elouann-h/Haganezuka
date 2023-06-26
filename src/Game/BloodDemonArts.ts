@@ -1,6 +1,10 @@
 import BreathingStyles from './BreathingStyles';
+import { Art } from './Typings';
 
-const bloodDemonArts = [
+/**
+ * The list of blood demon arts.
+ */
+const bloodDemonArts: Art[] = [
   {
     id: 'explodingBlood',
     name: 'Sang Enflammé Explosif',

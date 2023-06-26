@@ -53,6 +53,9 @@ interface PlayerInterface {
   };
 }
 
+/**
+ * The mongo schema for the player interface.
+ */
 const schema = new Schema<PlayerInterface>({
   discordId: { type: String, required: true },
   username: { type: String, required: true },
@@ -69,4 +72,7 @@ const schema = new Schema<PlayerInterface>({
   },
 });
 
+/**
+ * The generated model for the player schema.
+ */
 export const Player = model<PlayerInterface>('Player', schema);

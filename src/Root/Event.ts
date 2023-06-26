@@ -21,7 +21,7 @@ export type EventCallback = (...args: any[]) => void;
  * @returns Void.
  */
 export async function callbackDefault(...args: any[]): Promise<void> {
-  return;
+  return void args;
 }
 
 /**
@@ -49,14 +49,6 @@ export default class Event {
     this.client = client;
     this.name = name;
     this.callback = callbackDefault;
-  }
-
-  /**
-   * Call the callback function of an event.
-   * @returns Void.
-   */
-  public async call(): Promise<void> {
-    await this.callback(...arguments);
   }
 }
 

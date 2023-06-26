@@ -1,4 +1,9 @@
-const breathingStyles = [
+import { Art } from './Typings';
+
+/**
+ * The list of breathing styles.
+ */
+const breathingStyles: Art[] = [
   {
     id: 'beast',
     name: 'Souffle de la Bête',

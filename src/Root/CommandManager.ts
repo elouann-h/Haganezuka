@@ -1,4 +1,4 @@
-import { ApplicationCommand, Collection, GuildResolvable } from 'discord.js';
+import { Collection } from 'discord.js';
 
 import * as Command from './Command';
 import CoolDownManager from './CoolDownManager';
@@ -75,29 +75,11 @@ export default class CommandManager {
   }
 
   /**
-   * Remove a command from the bot.
-   * @param name The command name.
-   * @returns The command manager instance (this).
-   */
-  public remove(name: string): CommandManager {
-    this.commandsList.delete(name);
-    return this;
-  }
-
-  /**
    * Get a command from the cache with the name.
    * @param name The command name.
    * @returns The found command instance, or undefined.
    */
   public getCommand(name: string): Command.default | undefined {
     return this.commandsList.get(name);
-  }
-
-  /**
-   * Get the client commands. The client commands are the commands hosted on the API, not from the cache.
-   * @returns The bot API commands list, or undefined.
-   */
-  public get clientCommands(): Promise<Collection<string, ApplicationCommand<{ guild: GuildResolvable }>>> | undefined {
-    return this.client.application?.commands.fetch();
   }
 }

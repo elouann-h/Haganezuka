@@ -59,3 +59,19 @@ export type Skill =
  * The vowels of the alphabet.
  */
 export const Vowels = ['a', 'e', 'i', 'o', 'u', 'y'] as const;
+
+/**
+ * The representation of an art.
+ */
+export type Art = {
+  id: string;
+  name: string;
+  moves: string[];
+  movesCategories: {
+    basic: number[];
+    fineness: number[];
+    heavy: number[];
+    ultimate: number[];
+  };
+  custom?: true;
+};

@@ -98,9 +98,6 @@ export default class InterferingManager {
     const interferingNames: string[] = currentInterfering.map((queueElement: InterferingQueueElement): string => {
       return queueElement[0];
     });
-    const interferingIDs: Snowflake[] = currentInterfering.map((queueElement: InterferingQueueElement): Snowflake => {
-      return queueElement[2];
-    });
 
     if (interferingNames.includes(key as string)) {
       this.queue.set(
